@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zombie Arcade</title>
+  <style>
+    canvas {
+      display: block;
+      margin: 0 auto;
+      border: 2px solid black;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zombie Arcade</h1>
+  <form id="signup-form">
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="text" id="username" placeholder="Username" required>
+    <button type="submit">Sign Up</button>
+  </form>
+
+  <div id="game-container" style="display:none;">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <p>Waiting for players...</p>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const signupForm = document.getElementById('signup-form');
+    const gameContainer = document.getElementById('game-container');
+    let socket;
+
+    signupForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const username = document.getElementById('username').value;
+
+      // Connect to the server
+      socket = io();
+
+      socket.emit('signup', { email, username });
+
+      socket.on('match_found', () => {
+        signupForm.style.display = 'none';
+        gameContainer.style.display = 'block';
+        startGame();
+      });
+    });
+
+    function startGame() {
+      let players = [];
+      let zombies = [];
+      let score = 0;
+
+      socket.on('game_state', (data) => {
+        players = data.players;
+        zombies = data.zombies;
+        score = data.score;
+        render();
+      });
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Render players
+        players.forEach(player => {
+          ctx.fillStyle = 'blue';
+          ctx.fillRect(player.x, player.y, 20, 20);
+        });
+
+        // Render zombies
+        zombies.forEach(zombie => {
+          ctx.fillStyle = 'red';
+          ctx.fillRect(zombie.x, zombie.y, 20, 20);
+        });
+
+        // Render score
+        ctx.fillStyle = 'black';
+        ctx.fillText(`Score: ${score}`, 10, 20);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        socket.emit('player_move', { key: e.key });
+      });
+    }
+  </script>
+</body>
+</html>
